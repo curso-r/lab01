@@ -1,0 +1,246 @@
+---
+title: "lab01 - Relatório"
+author: " , "
+date: "01/25/2015"
+output: html_document
+---
+
+# Leitura de dados
+
+```{r}
+# Carregando os dados
+library(openxlsx)
+library(magrittr)
+siglas <- read.xlsx('bd/pnud.xlsx', sheet=1)
+municipios <- read.xlsx('bd/pnud.xlsx', sheet=2)
+estados <- read.xlsx('bd/pnud.xlsx', sheet=3)
+
+## Alternativas
+# municipios <- read.csv('bd/pnud_municipios_csv.csv')
+# municipios <- read.csv2('bd/pnud_municipios_csv2.csv')
+# municipios <- read.table('bd/pnud_municipios_csv.csv', sep=',', dec='.')
+# municipios <- read.table('bd/pnud_municipios_csv2.csv', sep=';', dec=',')
+```
+
+# Trabalhando com os dados dos estados
+
+### Alguns testes com os dados
+
+```{r eval=FALSE}
+dim(estados)         # dimensões (linhas e colunas)
+head(estados, 10)    # primeiras linhas do banco de estados
+tail(estados, 10)    # últimas seis linhas do banco de estados
+names(estados)       # nomes das colunas dos estados
+summary(estados)     # sumarizações dos estados
+View(estados)        # mostra as primeiras 1000 linhas e 100 colunas
+str(estados)         # mostra a estrutura do data.frame
+``` 
+
+## Algumas perguntas iniciais
+
+### Quantas linhas temos na base de dados?
+
+```{r}
+nrow(estados)
+```
+
+O número de linhas da base de dados é `r nrow(estados)` linhas.
+
+### Quantas colunas temos na base de dados?
+
+```{r}
+ncol(estados)
+```
+
+### Na variável `ano`, quais são os diferentes anos?
+
+```{r}
+table(estados$ano)
+```
+
+### Mostre a coluna com os nomes dos estados
+
+```{r}
+estados$ufn
+```
+
+### Ordene em ordem alfabética
+
+```{r}
+sort(estados$ufn)
+
+## outro jeito
+# estados$ufn[order(estados$ufn)]
+```
+
+
+### Agora mostre os nomes dos estados apenas uma vez cada
+
+```{r}
+unique(estados$ufn)
+
+## alternativas
+# names(table(dados$ufn))
+# dados$ufn[dados$ano==1991]
+# ...
+```
+
+### selecione as variáveis `ano`, `ufn` e `idhm` e mostre apenas as 10 primeiras linhas
+
+```{r}
+estados[, c('ano', 'ufn', 'idhm')] %>% head(10)
+```
+
+### Obtenha somente o ano de 2010
+
+```{r}
+estados[estados$ano == 2010, c('ano', 'ufn', 'idhm')]
+```
+
+### Ordene a base de dados anterior pelo idhm em ordem crescente
+
+```{r}
+estados_subset <- estados[estados$ano == 2010, c('ano', 'ufn', 'idhm')]
+estados_subset[order(estados_subset$idhm), ]
+```
+
+### Agora em ordem decrescente
+
+```{r}
+estados_subset[order(estados_subset$idhm, decreasing = TRUE), ]
+```
+
+### Calcule a renda per capita média dos estados em relação aos anos
+
+```{r}
+medias <- numeric(27)
+estados_unique <- sort(unique(estados$ufn))
+names(medias) <- estados_unique
+for(i in seq_along(estados_unique)) {
+  rdpc_subs <- estados[estados$ufn == estados_unique[i], 'rdpc']
+  medias[i] <- mean(rdpc_subs)
+}
+medias
+
+## mais facil
+# tapply(estados$rdpc, estados$ufn, mean)
+```
+
+### Calcule a renda per capita média do Brasil em cada ano. Essa média faz sentido?
+
+```{r}
+tapply(estados$rdpc, estados$ano, mean)
+```
+
+Essa média não faz sentido pois a renda per capita é uma razão da renda total pela população.
+Idealmente deveríamos ter a população cada estado, e construir uma média ponderada.
+
+### Calcule o valor correto da renda per capita do Brasil em cada ano
+
+```{r}
+## obs: a variável populacional utilizada no cálculo de rdpc é pop
+
+anos_unique <- unique(estados$ano)
+medias_ponderadas <- numeric(3)
+names(medias_ponderadas) <- anos_unique
+for(i in seq_along(anos_unique)) {
+  d <- estados[estados$ano == anos_unique[i], c('rdpc', 'pop')]
+  medias_ponderadas[i] <- sum(d$rdpc * d$pop) / sum(d$pop)
+}
+medias_ponderadas
+
+## jeito mais facil
+# denominador <- tapply(estados$pop, estados$ano, sum)
+# numerador <- tapply(estados$rdpc * estados$pop, estados$ano, sum)
+# numerador / denominador
+```
+
+### Outliers em relação ao índice de GINI
+
+OBS: O índice de GINI mede desigualdade social (quanto maior, pior)
+
+```{r}
+boxplot(gini~ano, data=estados)
+```
+
+Dá para notar um outlier em 1991. Quem é?
+
+```{r}
+boxp <- boxplot(gini~ano, data=estados[estados$ano==1991,])
+boxp$out
+
+estados[estados$ano==1991 & estados$gini %in% boxp$out, 'ufn']
+```
+
+### O brasil está melhorando em relação ao IDH?
+```{r}
+estados_unique <- sort(unique(estados$ufn))
+plot(estados$ano, estados$idhm)
+for(i in seq_along(estados_unique)) {
+  estado <- estados[estados$ufn==estados_unique[i], ]
+  lines(estado$ano, estado$idhm)
+}
+```
+
+Sim!
+
+---
+
+# Exercício do Laboratório
+
+O arquivo contém 3 planilhas. Vamos utilizar a planilha _siglas_, que contém a definição das variáveis,
+e a planilha _municipios_, que contém as informações demográficas e socioeconômicas por município 
+brasileiro.
+
+## Questões iniciais
+
+### Quais são os seis municípios com os maiores IDH municipais em 2010.
+
+```{r}
+# complete aqui
+```
+
+### Qual é a unidade federativa com menor expectativa de vida média, ponderada pela população dos municípios em 2000.
+
+```{r}
+# complete aqui
+```
+
+### Quais são os municípios _outliers_ com relação ao índice de Gini em 1991 e em 2010. 
+
+```{r}
+# complete aqui
+```
+
+## Mais questões:
+
+### Visualize como está distribuída a população dos municípios no Brasil. Quantos municípios concentram 25% da população?
+
+```{r}
+# complete aqui
+```
+
+### Categorize a renda per capita e associe com a expectativa de vida.
+
+```{r}
+# complete aqui
+```
+
+### Você acha que a situação do Brasil está melhorando em relação à educação, renda e expectativa de vida? Justifique utlizando dados de pelo menos 3 variáveis.
+
+```{r}
+# complete aqui
+```
+
+### No nordeste o aumento de distribuição de renda foi maior do que no sudeste?
+
+```{r}
+# complete aqui
+```
+
+### Insira mais pelo menos 3 estudos que você ache interessante.
+
+```{r}
+# complete aqui
+```
+
